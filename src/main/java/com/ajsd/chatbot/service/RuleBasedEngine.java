@@ -2,6 +2,9 @@ package com.ajsd.chatbot.service;
 
 import com.ajsd.chatbot.config.CountryDataLoader;
 import com.ajsd.chatbot.model.ConversationContext;
+import com.ajsd.chatbot.service.MedicalService;
+import com.ajsd.chatbot.service.IntelligenceService;
+import com.ajsd.chatbot.service.ContextAnalyzer;
 import org.springframework.stereotype.Component;
 
 /*
@@ -72,49 +75,77 @@ import org.springframework.stereotype.Component;
 public class RuleBasedEngine {
 
     private final ChatbotService chatbotService;
+    private final MedicalService medicalService;
+    private final IntelligenceService intelligenceService;
+    private final ContextAnalyzer contextAnalyzer;
+    
     private static final String COUNTRY_OPTIONS_STRING = "What do you want to learn about it?\n" +
             "A. learn about the capital\n" +
             "B. learn about the national animal\n" +
             "C. learn about the national flower\n" +
             "D. learn about all of the above\n" +
             "E. Choose another country";
+            
+    private static final String MEDICAL_OPTIONS_STRING = "What do you want to learn about it?\n" +
+            "A. learn about symptoms\n" +
+            "B. learn about causes\n" +
+            "C. learn about treatment\n" +
+            "D. learn about prevention\n" +
+            "E. learn about all of the above\n" +
+            "F. Choose another condition";
 
-    public RuleBasedEngine(ChatbotService chatbotService) {
+    public RuleBasedEngine(ChatbotService chatbotService, MedicalService medicalService, IntelligenceService intelligenceService, ContextAnalyzer contextAnalyzer) {
         this.chatbotService = chatbotService;
+        this.medicalService = medicalService;
+        this.intelligenceService = intelligenceService;
+        this.contextAnalyzer = contextAnalyzer;
     }
 
     public String processUserInput(String userInput, ConversationContext context) {
         // Handle help command at any step
-        if (userInput.toLowerCase().contains("help") || userInput.toLowerCase().contains("ayuda")) {
+        if (userInput.toLowerCase().contains("help")) {
             return getHelpMessage();
+        }
+        
+        // Check for intelligent responses first
+        String smartResponse = intelligenceService.generateSmartResponse(userInput, context);
+        if (smartResponse != null) {
+            return smartResponse;
+        }
+        
+        // Analyze context for deeper understanding
+        String contextualResponse = contextAnalyzer.analyzeUserIntent(userInput, context);
+        if (contextualResponse != null) {
+            return contextualResponse;
         }
         
         switch (context.getCurrentStep()) {
             case "ASK_INTENT":
                 return handleAskIntent(userInput, context);
+            case "SELECT_TOPIC":
+                return handleSelectTopic(userInput, context);
             case "SELECT_COUNTRY":
                 return handleSelectCountry(userInput, context);
+            case "SELECT_CONDITION":
+                return handleSelectCondition(userInput, context);
             case "CHOOSE_OPTION":
                 return handleChooseOption(userInput, context);
             default:
                 context.setCurrentStep("ASK_INTENT");
-                return "I do not understand. \nLet's start again. \nWhat country do you want to learn about?";
+                return "I do not understand. \nLet's start again. \nWhat would you like to learn about?";
         }
     }
 
     private String handleAskIntent(String userInput, ConversationContext context) {
-        if (userInput.toLowerCase().contains("countries")
-                ||
-                userInput.toLowerCase().contains("country")
-                ||
-                userInput.toLowerCase().contains("teach")
-        ) {
-            context.setCurrentStep("SELECT_COUNTRY");
-            return "I can teach you about countries, their capitals, national animals, and national flowers.\n What country do you want to learn about?";
-        } else if (userInput.toLowerCase().contains("help") || userInput.toLowerCase().contains("ayuda")) {
+        if (userInput.toLowerCase().contains("teach")) {
+            context.setCurrentStep("SELECT_TOPIC");
+            return "I can teach you about different topics. What would you like to learn about?\n" +
+                   "A. Countries (capitals, animals, flowers)\n" +
+                   "B. Medicine (conditions, symptoms, treatments)";
+        } else if (userInput.toLowerCase().contains("help")) {
             return getHelpMessage();
         }
-        return "I do not understand. \nPlease ask me something else. \nI can teach about countries, their capitals, national animals, and national flowers.";
+        return "I do not understand. \nPlease ask me something else. \nType 'teach' to see what I can help you with.";
     }
 
     private String handleSelectCountry(String countryNameInput, ConversationContext context) {
@@ -128,78 +159,113 @@ public class RuleBasedEngine {
     }
 
     private String handleChooseOption(String userInput, ConversationContext context) {
+        if ("COUNTRIES".equals(context.getCurrentTopic())) {
+            return handleCountryOptions(userInput, context);
+        } else if ("MEDICINE".equals(context.getCurrentTopic())) {
+            return handleMedicalOptions(userInput, context);
+        }
+        return "Something went wrong. Please start over.";
+    }
+    
+    private String handleCountryOptions(String userInput, ConversationContext context) {
         String country = context.getSelectedCountry();
-        String returnValue = "";
+        String baseResponse;
         
-        /**  You will create the logic that handles the user's input during the chatbot's
-         *          'CHOOSE_OPTION' step. The method should check the user's input against
-         *          the following options:
-         *              A: Return the capital of the currently selected country,
-         *              followed by a question asking what else the user wants to learn about
-         *              the same country.
-         *              B: Return the national animal of the currently selected country,
-         *              followed by a similar question.
-         *              C: Return the national flower of the currently selected country,
-         *                followed by the same question.
-         *              D: Return all available information about the currently selected country
-         *                  (capital, national animal, and national flower),
-         *                  and then ask what else the user wants to learn.
-         *              E: Reset the step to 'SELECT_COUNTRY'
-         *                and prompt the user to select another country.
-         *              For invalid inputs, reset the step to 'SELECT_COUNTRY'
-         *              and return a message asking the user to choose a valid country.
-         *              Use a COUNTRY_OPTIONS_STRING variable to list available
-         *              options whenever asking the user what they want to learn next.
-         *              The method should also update the current step in the ConversationContext
-         *              to reflect the next step in the conversation.
-         *              The method should return the appropriate response string.
-         *              The method should break the line after each punctuation with a '\n'.
-         *              Use if-else if- else statements to handle different cases.
-         **/
         if (userInput.equalsIgnoreCase("A")) {
-            returnValue = "The capital of " + country + " is " + chatbotService.getCapital(country) + ".\n" + COUNTRY_OPTIONS_STRING;
+            baseResponse = "The capital of " + country + " is " + chatbotService.getCapital(country) + ".";
+            return intelligenceService.enhanceResponse(baseResponse, "COUNTRIES", country, context) + "\n\n" + COUNTRY_OPTIONS_STRING;
         } else if (userInput.equalsIgnoreCase("B")) {
-            returnValue = "The national animal of " + country + " is " + chatbotService.getNationalAnimal(country) + ".\n" + COUNTRY_OPTIONS_STRING;
+            baseResponse = "The national animal of " + country + " is " + chatbotService.getNationalAnimal(country) + ".";
+            return intelligenceService.enhanceResponse(baseResponse, "COUNTRIES", country, context) + "\n\n" + COUNTRY_OPTIONS_STRING;
         } else if (userInput.equalsIgnoreCase("C")) {
-            returnValue = "The national flower of " + country + " is " + chatbotService.getNationalFlower(country) + ".\n" + COUNTRY_OPTIONS_STRING;
+            baseResponse = "The national flower of " + country + " is " + chatbotService.getNationalFlower(country) + ".";
+            return intelligenceService.enhanceResponse(baseResponse, "COUNTRIES", country, context) + "\n\n" + COUNTRY_OPTIONS_STRING;
         } else if (userInput.equalsIgnoreCase("D")) {
-            returnValue = "The capital of " + country + " is " + chatbotService.getCapital(country) + ".\n" +
+            baseResponse = "The capital of " + country + " is " + chatbotService.getCapital(country) + ".\n" +
                     "The national animal of " + country + " is " + chatbotService.getNationalAnimal(country) + ".\n" +
-                    "The national flower of " + country + " is " + chatbotService.getNationalFlower(country) + ".\n" +
-                    COUNTRY_OPTIONS_STRING;
+                    "The national flower of " + country + " is " + chatbotService.getNationalFlower(country) + ".";
+            return intelligenceService.enhanceResponse(baseResponse, "COUNTRIES", country, context) + "\n\n" + COUNTRY_OPTIONS_STRING;
         } else if (userInput.equalsIgnoreCase("E")) {
             context.setCurrentStep("SELECT_COUNTRY");
-            returnValue = "What country do you want to learn about?";
+            return "What country do you want to learn about?";
         } else {
-            context.setCurrentStep("SELECT_COUNTRY");
-            returnValue = "I do not understand. \nPlease choose one of the following:\n" + COUNTRY_OPTIONS_STRING;
+            return "I do not understand. \nPlease choose one of the following:\n" + COUNTRY_OPTIONS_STRING;
         }
-
-
-         return  returnValue;
+    }
+    
+    private String handleMedicalOptions(String userInput, ConversationContext context) {
+        String condition = context.getSelectedCondition();
+        String baseResponse;
+        
+        if (userInput.equalsIgnoreCase("A")) {
+            baseResponse = "Symptoms of " + condition + ": " + medicalService.getSymptoms(condition) + ".";
+            return intelligenceService.enhanceResponse(baseResponse, "MEDICINE", condition, context) + "\n\n" + MEDICAL_OPTIONS_STRING;
+        } else if (userInput.equalsIgnoreCase("B")) {
+            baseResponse = "Causes of " + condition + ": " + medicalService.getCauses(condition) + ".";
+            return intelligenceService.enhanceResponse(baseResponse, "MEDICINE", condition, context) + "\n\n" + MEDICAL_OPTIONS_STRING;
+        } else if (userInput.equalsIgnoreCase("C")) {
+            baseResponse = "Treatment for " + condition + ": " + medicalService.getTreatment(condition) + ".";
+            return intelligenceService.enhanceResponse(baseResponse, "MEDICINE", condition, context) + "\n\n" + MEDICAL_OPTIONS_STRING;
+        } else if (userInput.equalsIgnoreCase("D")) {
+            baseResponse = "Prevention of " + condition + ": " + medicalService.getPrevention(condition) + ".";
+            return intelligenceService.enhanceResponse(baseResponse, "MEDICINE", condition, context) + "\n\n" + MEDICAL_OPTIONS_STRING;
+        } else if (userInput.equalsIgnoreCase("E")) {
+            baseResponse = "Complete information about " + condition + ":\n" +
+                    "Symptoms: " + medicalService.getSymptoms(condition) + ".\n" +
+                    "Causes: " + medicalService.getCauses(condition) + ".\n" +
+                    "Treatment: " + medicalService.getTreatment(condition) + ".\n" +
+                    "Prevention: " + medicalService.getPrevention(condition) + ".";
+            return intelligenceService.enhanceResponse(baseResponse, "MEDICINE", condition, context) + "\n\n" + MEDICAL_OPTIONS_STRING;
+        } else if (userInput.equalsIgnoreCase("F")) {
+            context.setCurrentStep("SELECT_CONDITION");
+            return "Available conditions: diabetes, hypertension, asthma, migraine, depression.\nWhat condition do you want to learn about?";
+        } else {
+            return "I do not understand. \nPlease choose one of the following:\n" + MEDICAL_OPTIONS_STRING;
+        }
+    }
+    
+    private String handleSelectTopic(String userInput, ConversationContext context) {
+        if (userInput.equalsIgnoreCase("A") || userInput.toLowerCase().contains("countries") || userInput.toLowerCase().contains("country")) {
+            context.setCurrentTopic("COUNTRIES");
+            context.setCurrentStep("SELECT_COUNTRY");
+            return "Great! I can teach you about countries, their capitals, national animals, and national flowers.\n What country do you want to learn about?";
+        } else if (userInput.equalsIgnoreCase("B") || userInput.toLowerCase().contains("medicine") || userInput.toLowerCase().contains("medical")) {
+            context.setCurrentTopic("MEDICINE");
+            context.setCurrentStep("SELECT_CONDITION");
+            return "Great! I can teach you about medical conditions.\n Available conditions: diabetes, hypertension, asthma, migraine, depression.\n What condition do you want to learn about?";
+        }
+        return "I do not understand. Please choose:\n" +
+               "A. Countries (capitals, animals, flowers)\n" +
+               "B. Medicine (conditions, symptoms, treatments)";
+    }
+    
+    private String handleSelectCondition(String conditionInput, ConversationContext context) {
+        boolean conditionExists = medicalService.isValidCondition(conditionInput);
+        if (conditionExists) {
+            context.setSelectedCondition(conditionInput.toLowerCase());
+            context.setCurrentStep("CHOOSE_OPTION");
+            return "Great! I know about " + conditionInput + ".\n" + MEDICAL_OPTIONS_STRING;
+        }
+        return "I do not understand that condition. \nAvailable conditions: diabetes, hypertension, asthma, migraine, depression.\nPlease provide a valid condition.";
     }
     
     private String getHelpMessage() {
-        return "🤖 **Ayuda del AJSD Chatbot**\n\n" +
-               "**Cómo usar el chatbot:**\n" +
-               "1. Escribe 'teach' o 'enseñar' para comenzar\n" +
-               "2. Escribe 'clear' o 'limpiar' para reiniciar la conversación\n" +
-               "3. Escribe 'help' o 'ayuda' para ver este mensaje\n\n" +
-               "**Qué puedo enseñarte:**\n" +
-               "• Capitales de países\n" +
-               "• Animales nacionales\n" +
-               "• Flores nacionales\n\n" +
-               "**Opciones durante la conversación:**\n" +
-               "• A: Aprender sobre la capital\n" +
-               "• B: Aprender sobre el animal nacional\n" +
-               "• C: Aprender sobre la flor nacional\n" +
-               "• D: Aprender todo sobre el país\n" +
-               "• E: Elegir otro país\n\n" +
-               "**Consejos:**\n" +
-               "• Puedes escribir el nombre completo del país\n" +
-               "• También funciona con partes del nombre\n" +
-               "• Si no entiendo un país, intenta con otro nombre\n\n" +
-               "¿Quieres empezar? Escribe 'teach' para comenzar.";
+        return "🤖 **AJSD Chatbot Help**\n\n" +
+               "**How to use the chatbot:**\n" +
+               "1. Type 'teach' to begin\n" +
+               "2. Type 'clear' to reset the conversation\n" +
+               "3. Type 'help' to see this message\n\n" +
+               "**What I can teach you:**\n" +
+               "• Countries: capitals, national animals, national flowers\n" +
+               "• Medicine: symptoms, causes, treatments, prevention\n\n" +
+               "**Available Topics:**\n" +
+               "• Countries: Any country name\n" +
+               "• Medical: diabetes, hypertension, asthma, migraine, depression\n\n" +
+               "**Tips:**\n" +
+               "• Choose A or B for topic selection\n" +
+               "• Use A-F options during conversations\n" +
+               "• Type exact condition names for medical topics\n\n" +
+               "Ready to start? Type 'teach' to begin.";
     }
 
 

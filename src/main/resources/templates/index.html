@@ -166,15 +166,15 @@
 <body>
     <div class="header">
         <h1>AJSD Chatbot</h1>
-        <button class="theme-toggle" onclick="toggleTheme()">🌙 Modo Oscuro</button>
+        <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
     </div>
 
     <div class="main-container">
         <div class="left-panel">
             <h3>Our conversation
-                <button class="clear-btn" onclick="clearConversation()">🗑️ Limpiar</button>
+                <button class="clear-btn" onclick="clearConversation()">🗑️ Clear</button>
             </h3>
-            <div class="typing-indicator" id="typingIndicator">Chatbot está escribiendo...</div>
+            <div class="typing-indicator" id="typingIndicator">Chatbot is typing...</div>
             <div id="conversation" class="conversation">
                 <div th:each="message : ${conversationContext?.messages}">
                     <div th:if="${message.sender == 'USER'}" class="message user-message">
@@ -193,22 +193,27 @@
             <h3>About AJSD Chatbot</h3>
             <div class="instructions">
                 <p>Welcome to the AJSD Chatbot! Here's how to interact:</p>
-                <p>1. type 'teach' to begin<br>
-                2. type 'clear' to reset<br>
-                3. type 'another country name or put a space after the country name' when 'a valid country name is not understood'<br>
-                4. try using the rest or use the term 'teach' to try from beginning</p>
+                <p>1. Type 'teach' to begin<br>
+                2. Type 'clear' to reset<br>
+                3. Type 'help' for assistance<br>
+                4. Choose A or B for topics, then follow options</p>
+                <p><strong>Available Topics:</strong><br>
+                • Countries: capitals, animals, flowers<br>
+                • Medicine: symptoms, causes, treatments</p>
             </div>
         </div>
     </div>
 
     <div class="quick-actions">
-        <button class="quick-btn" onclick="sendQuickMessage('teach')">🎓 Enseñar</button>
-        <button class="quick-btn" onclick="sendQuickMessage('clear')">🔄 Reiniciar</button>
-        <button class="quick-btn" onclick="sendQuickMessage('help')">❓ Ayuda</button>
+        <button class="quick-btn" onclick="sendQuickMessage('teach')">🎓 Teach</button>
+        <button class="quick-btn" onclick="sendQuickMessage('A')">🌍 Countries</button>
+        <button class="quick-btn" onclick="sendQuickMessage('B')">🏥 Medicine</button>
+        <button class="quick-btn" onclick="sendQuickMessage('clear')">🔄 Reset</button>
+        <button class="quick-btn" onclick="sendQuickMessage('help')">❓ Help</button>
     </div>
     <div class="input-section">
-        <input type="text" id="userInput" placeholder="Escribe tu mensaje aquí..." onkeypress="handleKeyPress(event)">
-        <button id="sendBtn" onclick="sendMessage()">💬 Preguntar</button>
+        <input type="text" id="userInput" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
+        <button id="sendBtn" onclick="sendMessage()">💬 Ask Chatbot</button>
     </div>
 
     <div class="footer">
@@ -228,11 +233,11 @@
             
             if (body.getAttribute('data-theme') === 'dark') {
                 body.removeAttribute('data-theme');
-                themeBtn.textContent = '🌙 Modo Oscuro';
+                themeBtn.textContent = '🌙 Dark Mode';
                 localStorage.setItem('theme', 'light');
             } else {
                 body.setAttribute('data-theme', 'dark');
-                themeBtn.textContent = '☀️ Modo Claro';
+                themeBtn.textContent = '☀️ Light Mode';
                 localStorage.setItem('theme', 'dark');
             }
         }
@@ -241,7 +246,7 @@
             const savedTheme = localStorage.getItem('theme');
             if (savedTheme === 'dark') {
                 document.body.setAttribute('data-theme', 'dark');
-                document.querySelector('.theme-toggle').textContent = '☀️ Modo Claro';
+                document.querySelector('.theme-toggle').textContent = '☀️ Light Mode';
             }
         }
 
@@ -251,7 +256,7 @@
         }
 
         function clearConversation() {
-            if (confirm('¿Estás seguro de que quieres limpiar la conversación?')) {
+            if (confirm('Are you sure you want to clear the conversation?')) {
                 sendQuickMessage('clear');
             }
         }
@@ -271,7 +276,7 @@
             
             if (!message || message.length > 500) {
                 if (message.length > 500) {
-                    alert('El mensaje es muy largo (máximo 500 caracteres)');
+                    alert('Message is too long (maximum 500 characters)');
                 }
                 return;
             }
@@ -294,14 +299,14 @@
                     input.value = '';
                 } else if (response.status === 429) {
                     const errorData = await response.json();
-                    alert(errorData.error || 'Demasiadas solicitudes. Espera un momento.');
+                    alert(errorData.error || 'Too many requests. Please wait a moment.');
                 } else {
                     const errorData = await response.json();
-                    alert(errorData.error || 'Error al enviar mensaje');
+                    alert(errorData.error || 'Error sending message');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error de conexión. Inténtalo de nuevo.');
+                alert('Connection error. Please try again.');
             } finally {
                 hideTyping();
                 sendBtn.disabled = false;
@@ -323,14 +328,14 @@
                     if (message.sender === 'USER') {
                         messageDiv.className = 'message user-message';
                         messageDiv.innerHTML = `
-                            <div class="message-label">Tú dijiste:</div>
+                            <div class="message-label">You said:</div>
                             <div>${message.content}</div>
                             <div class="timestamp">${timestamp}</div>
                         `;
                     } else if (message.sender === 'BOT') {
                         messageDiv.className = 'message bot-message';
                         messageDiv.innerHTML = `
-                            <div class="message-label">Chatbot dice:</div>
+                            <div class="message-label">Chatbot says:</div>
                             <div>${message.content.replace(/\n/g, '<br>')}</div>
                             <div class="timestamp">${timestamp}</div>
                         `;

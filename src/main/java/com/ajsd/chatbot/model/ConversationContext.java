@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ConversationContext {
-    private String currentStep; // e.g., "ASK_INTENT", "SELECT_COUNTRY", "CHOOSE_OPTION"
+    private String currentStep; // e.g., "ASK_INTENT", "SELECT_TOPIC", "SELECT_COUNTRY", "SELECT_CONDITION", "CHOOSE_OPTION"
     private String selectedCountry; // Country currently being discussed
+    private String selectedCondition; // Medical condition currently being discussed
+    private String currentTopic; // "COUNTRIES" or "MEDICINE"
     private List<String> availableOptions; // Options available for the current step
     private List<Message> messages; // Conversation history
 
@@ -69,9 +71,27 @@ public class ConversationContext {
         this.messages.add(new Message(sender, content));
     }
 
+    public String getSelectedCondition() {
+        return selectedCondition;
+    }
+
+    public void setSelectedCondition(String selectedCondition) {
+        this.selectedCondition = selectedCondition;
+    }
+
+    public String getCurrentTopic() {
+        return currentTopic;
+    }
+
+    public void setCurrentTopic(String currentTopic) {
+        this.currentTopic = currentTopic;
+    }
+
     public void clear() {
         this.currentStep = "ASK_INTENT";
         this.selectedCountry = null;
+        this.selectedCondition = null;
+        this.currentTopic = null;
         this.availableOptions.clear();
         this.messages.clear();
     }

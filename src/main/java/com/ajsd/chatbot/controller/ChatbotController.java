@@ -49,7 +49,7 @@ public class ChatbotController {
         if (!rateLimitService.isAllowed(sessionId)) {
             logger.warn("Rate limit exceeded for session: {}", sessionId);
             Map<String, String> error = new HashMap<>();
-            error.put("error", "Demasiadas solicitudes. Espera un momento.");
+            error.put("error", "Too many requests. Please wait a moment.");
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
         }
 
@@ -59,7 +59,7 @@ public class ChatbotController {
         if (!validationService.isValidMessage(userMessage)) {
             logger.warn("Invalid message from session: {}", sessionId);
             Map<String, String> error = new HashMap<>();
-            error.put("error", "Mensaje inválido o muy largo.");
+            error.put("error", "Invalid or too long message.");
             return ResponseEntity.badRequest().body(error);
         }
         
@@ -102,9 +102,9 @@ public class ChatbotController {
 
         if (message.equalsIgnoreCase("start")) {
             return "Hello! How can I help you today?";
-        } else if (message.equalsIgnoreCase("clear") || message.equalsIgnoreCase("limpiar")) {
+        } else if (message.equalsIgnoreCase("clear")) {
             context.clear();
-            return "Conversación reiniciada. \n¿En qué puedo ayudarte?";
+            return "Conversation has been reset. \nHow can I help you today?";
         } else {
             /**  Set the value of the variable "response"
              *          to the value returned by the processUserInput method of the RuleBasedEngine class.
