@@ -84,6 +84,11 @@ public class RuleBasedEngine {
     }
 
     public String processUserInput(String userInput, ConversationContext context) {
+        // Handle help command at any step
+        if (userInput.toLowerCase().contains("help") || userInput.toLowerCase().contains("ayuda")) {
+            return getHelpMessage();
+        }
+        
         switch (context.getCurrentStep()) {
             case "ASK_INTENT":
                 return handleAskIntent(userInput, context);
@@ -106,6 +111,8 @@ public class RuleBasedEngine {
         ) {
             context.setCurrentStep("SELECT_COUNTRY");
             return "I can teach you about countries, their capitals, national animals, and national flowers.\n What country do you want to learn about?";
+        } else if (userInput.toLowerCase().contains("help") || userInput.toLowerCase().contains("ayuda")) {
+            return getHelpMessage();
         }
         return "I do not understand. \nPlease ask me something else. \nI can teach about countries, their capitals, national animals, and national flowers.";
     }
@@ -170,6 +177,29 @@ public class RuleBasedEngine {
 
 
          return  returnValue;
+    }
+    
+    private String getHelpMessage() {
+        return "🤖 **Ayuda del AJSD Chatbot**\n\n" +
+               "**Cómo usar el chatbot:**\n" +
+               "1. Escribe 'teach' o 'enseñar' para comenzar\n" +
+               "2. Escribe 'clear' o 'limpiar' para reiniciar la conversación\n" +
+               "3. Escribe 'help' o 'ayuda' para ver este mensaje\n\n" +
+               "**Qué puedo enseñarte:**\n" +
+               "• Capitales de países\n" +
+               "• Animales nacionales\n" +
+               "• Flores nacionales\n\n" +
+               "**Opciones durante la conversación:**\n" +
+               "• A: Aprender sobre la capital\n" +
+               "• B: Aprender sobre el animal nacional\n" +
+               "• C: Aprender sobre la flor nacional\n" +
+               "• D: Aprender todo sobre el país\n" +
+               "• E: Elegir otro país\n\n" +
+               "**Consejos:**\n" +
+               "• Puedes escribir el nombre completo del país\n" +
+               "• También funciona con partes del nombre\n" +
+               "• Si no entiendo un país, intenta con otro nombre\n\n" +
+               "¿Quieres empezar? Escribe 'teach' para comenzar.";
     }
 
 

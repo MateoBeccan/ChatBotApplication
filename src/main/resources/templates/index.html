@@ -5,11 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AJSD Chatbot</title>
     <style>
+        :root {
+            --bg-color: #f5f5f5;
+            --panel-color: #e8e8e8;
+            --text-color: #333;
+            --user-msg-bg: #e3f2fd;
+            --bot-msg-bg: #f3e5f5;
+        }
+        [data-theme="dark"] {
+            --bg-color: #1a1a1a;
+            --panel-color: #2d2d2d;
+            --text-color: #e0e0e0;
+            --user-msg-bg: #1e3a5f;
+            --bot-msg-bg: #3d1a78;
+        }
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: #f5f5f5;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
         }
         .header {
             text-align: center;
@@ -25,10 +41,11 @@
             margin-bottom: 20px;
         }
         .left-panel, .right-panel {
-            background-color: #e8e8e8;
+            background-color: var(--panel-color);
             padding: 15px;
             border-radius: 8px;
             flex: 1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .left-panel h3, .right-panel h3 {
             margin-top: 0;
@@ -48,11 +65,11 @@
             border-radius: 4px;
         }
         .user-message {
-            background-color: #e3f2fd;
+            background-color: var(--user-msg-bg);
             border-left: 4px solid #2196f3;
         }
         .bot-message {
-            background-color: #f3e5f5;
+            background-color: var(--bot-msg-bg);
             border-left: 4px solid #9c27b0;
         }
         .message-label {
@@ -86,6 +103,58 @@
         .input-section button:hover {
             background-color: #1976d2;
         }
+        .input-section button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .theme-toggle {
+            background: none;
+            border: 1px solid var(--text-color);
+            color: var(--text-color);
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .clear-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .typing-indicator {
+            display: none;
+            font-style: italic;
+            color: #666;
+            padding: 10px;
+        }
+        .timestamp {
+            font-size: 10px;
+            color: #888;
+            margin-top: 5px;
+        }
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .quick-btn {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .quick-btn:hover {
+            background: #1976d2;
+        }
         .footer {
             text-align: center;
             font-size: 12px;
@@ -97,11 +166,15 @@
 <body>
     <div class="header">
         <h1>AJSD Chatbot</h1>
+        <button class="theme-toggle" onclick="toggleTheme()">🌙 Modo Oscuro</button>
     </div>
 
     <div class="main-container">
         <div class="left-panel">
-            <h3>Our conversation</h3>
+            <h3>Our conversation
+                <button class="clear-btn" onclick="clearConversation()">🗑️ Limpiar</button>
+            </h3>
+            <div class="typing-indicator" id="typingIndicator">Chatbot está escribiendo...</div>
             <div id="conversation" class="conversation">
                 <div th:each="message : ${conversationContext?.messages}">
                     <div th:if="${message.sender == 'USER'}" class="message user-message">
@@ -128,9 +201,14 @@
         </div>
     </div>
 
+    <div class="quick-actions">
+        <button class="quick-btn" onclick="sendQuickMessage('teach')">🎓 Enseñar</button>
+        <button class="quick-btn" onclick="sendQuickMessage('clear')">🔄 Reiniciar</button>
+        <button class="quick-btn" onclick="sendQuickMessage('help')">❓ Ayuda</button>
+    </div>
     <div class="input-section">
-        <input type="text" id="userInput" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
-        <button onclick="sendMessage()">Ask Chatbot</button>
+        <input type="text" id="userInput" placeholder="Escribe tu mensaje aquí..." onkeypress="handleKeyPress(event)">
+        <button id="sendBtn" onclick="sendMessage()">💬 Preguntar</button>
     </div>
 
     <div class="footer">
@@ -144,11 +222,62 @@
             }
         }
 
+        function toggleTheme() {
+            const body = document.body;
+            const themeBtn = document.querySelector('.theme-toggle');
+            
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.removeAttribute('data-theme');
+                themeBtn.textContent = '🌙 Modo Oscuro';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                themeBtn.textContent = '☀️ Modo Claro';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+                document.querySelector('.theme-toggle').textContent = '☀️ Modo Claro';
+            }
+        }
+
+        function sendQuickMessage(message) {
+            document.getElementById('userInput').value = message;
+            sendMessage();
+        }
+
+        function clearConversation() {
+            if (confirm('¿Estás seguro de que quieres limpiar la conversación?')) {
+                sendQuickMessage('clear');
+            }
+        }
+
+        function showTyping() {
+            document.getElementById('typingIndicator').style.display = 'block';
+        }
+
+        function hideTyping() {
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+
         async function sendMessage() {
             const input = document.getElementById('userInput');
+            const sendBtn = document.getElementById('sendBtn');
             const message = input.value.trim();
             
-            if (!message) return;
+            if (!message || message.length > 500) {
+                if (message.length > 500) {
+                    alert('El mensaje es muy largo (máximo 500 caracteres)');
+                }
+                return;
+            }
+            
+            sendBtn.disabled = true;
+            showTyping();
             
             try {
                 const response = await fetch('/chat', {
@@ -163,11 +292,19 @@
                     const conversationData = await response.json();
                     updateConversation(conversationData);
                     input.value = '';
+                } else if (response.status === 429) {
+                    const errorData = await response.json();
+                    alert(errorData.error || 'Demasiadas solicitudes. Espera un momento.');
                 } else {
-                    console.error('Error sending message:', response.statusText);
+                    const errorData = await response.json();
+                    alert(errorData.error || 'Error al enviar mensaje');
                 }
             } catch (error) {
                 console.error('Error:', error);
+                alert('Error de conexión. Inténtalo de nuevo.');
+            } finally {
+                hideTyping();
+                sendBtn.disabled = false;
             }
         }
 
@@ -178,18 +315,24 @@
             if (conversationData.messages) {
                 conversationData.messages.forEach(message => {
                     const messageDiv = document.createElement('div');
+                    const timestamp = new Date().toLocaleTimeString('es-ES', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
                     
                     if (message.sender === 'USER') {
                         messageDiv.className = 'message user-message';
                         messageDiv.innerHTML = `
-                            <div class="message-label">You requested:</div>
+                            <div class="message-label">Tú dijiste:</div>
                             <div>${message.content}</div>
+                            <div class="timestamp">${timestamp}</div>
                         `;
                     } else if (message.sender === 'BOT') {
                         messageDiv.className = 'message bot-message';
                         messageDiv.innerHTML = `
-                            <div class="message-label">Chatbot says:</div>
+                            <div class="message-label">Chatbot dice:</div>
                             <div>${message.content.replace(/\n/g, '<br>')}</div>
+                            <div class="timestamp">${timestamp}</div>
                         `;
                     }
                     
@@ -199,6 +342,9 @@
             
             conversationDiv.scrollTop = conversationDiv.scrollHeight;
         }
+
+        // Load theme on page load
+        document.addEventListener('DOMContentLoaded', loadTheme);
     </script>
 </body>
 </html>
